@@ -1,13 +1,144 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- ===================== -->
+    <!-- Basic Meta -->
+    <!-- ===================== -->
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>admin-cybernexus</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+
+    <title>CyberNexus Admin Panel • Secure Control Center</title>
+
+    <!-- ===================== -->
+    <!-- SEO Meta -->
+    <!-- ===================== -->
+    <meta
+      name="description"
+      content="CyberNexus Admin Panel — secure root control center for managing users, sessions, security and system monitoring."
+    />
+    <meta
+      name="keywords"
+      content="CyberNexus, admin panel, cybersecurity, admin dashboard, secure admin, root panel"
+    />
+    <meta name="author" content="CyberNexus Team" />
+    <meta name="robots" content="noindex, nofollow" />
+    <!-- Admin panel bo‘lgani uchun ataylab index qilinmaydi -->
+
+    <!-- ===================== -->
+    <!-- Theme / App -->
+    <!-- ===================== -->
+    <meta name="theme-color" content="#05070b" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="application-name" content="CyberNexus Admin" />
+
+    <!-- ===================== -->
+    <!-- Icons -->
+    <!-- ===================== -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/cybernexus.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/cybernexus.png" />
+    <link rel="apple-touch-icon" href="/cybernexus.png" />
+
+    <!-- ===================== -->
+    <!-- Open Graph (Telegram / Facebook) -->
+    <!-- ===================== -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="CyberNexus Admin Panel" />
+    <meta
+      property="og:description"
+      content="Secure root-level admin panel for CyberNexus platform."
+    />
+    <meta property="og:url" content="https://admin.cybernexus.uz" />
+    <meta property="og:image" content="https://cybernexus.uz/cybernexus.png" />
+    <meta property="og:site_name" content="CyberNexus" />
+
+    <!-- ===================== -->
+    <!-- Twitter / X Card -->
+    <!-- ===================== -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CyberNexus Admin Panel" />
+    <meta
+      name="twitter:description"
+      content="Secure root-level admin dashboard for CyberNexus."
+    />
+    <meta name="twitter:image" content="https://cybernexus.uz/cybernexus.png" />
+
+    <!-- ===================== -->
+    <!-- Security Hardening (Frontend side) -->
+    <!-- ===================== -->
+    <meta
+      http-equiv="Referrer-Policy"
+      content="strict-origin-when-cross-origin"
+    />
+    <meta
+      http-equiv="Permissions-Policy"
+      content="camera=(), microphone=(), geolocation=()"
+    />
+
+    <!-- ===================== -->
+    <!-- Fonts (System-first, no external tracking) -->
+    <!-- ===================== -->
+    <style>
+      html {
+        background-color: #05070b;
+      }
+      body {
+        margin: 0;
+        background-color: #05070b;
+        color: #e6f7ee;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          "Apple Color Emoji",
+          "Segoe UI Emoji";
+      }
+
+      /* Prevent white flash */
+      #root {
+        min-height: 100vh;
+        background-color: #05070b;
+      }
+    </style>
   </head>
+
   <body>
+    <!-- ===================== -->
+    <!-- App Root -->
+    <!-- ===================== -->
     <div id="root"></div>
+
+    <!-- ===================== -->
+    <!-- Vite Entry -->
+    <!-- ===================== -->
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- ===================== -->
+    <!-- Fallback (No JS) -->
+    <!-- ===================== -->
+    <noscript>
+      <div
+        style="
+          padding: 24px;
+          font-family: system-ui;
+          background: #05070b;
+          color: #ffffff;
+        "
+      >
+        <h2>JavaScript Required</h2>
+        <p>
+          CyberNexus Admin Panel requires JavaScript to function. Please enable
+          JavaScript in your browser.
+        </p>
+      </div>
+    </noscript>
   </body>
 </html>
