@@ -1,3 +1,11 @@
+/* eslint-disable react-hooks/immutability, react-hooks/purity */
+/*
+ * react-three-fiber works by mutating live three.js objects (camera, meshes,
+ * materials) from inside useFrame, and by seeding geometry with Math.random()
+ * inside useMemo. Those are the library's intended patterns, but the newer
+ * react-hooks compiler rules read them as impure renders and illegal
+ * mutations. They are disabled for these two files only.
+ */
 // src/design/scene/NeuralField.jsx
 import React, { useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -15,11 +23,10 @@ const CYBER = new THREE.Color("#00e5ff");
 function ParticleField({ count = 1400, reduced }) {
   const pointsRef = useRef(null);
 
-  const { positions, colors, sizes, drift } = useMemo(() => {
+  const { positions, colors, sizes } = useMemo(() => {
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
-    const drift = new Float32Array(count);
     const c = new THREE.Color();
 
     for (let i = 0; i < count; i++) {
@@ -39,10 +46,9 @@ function ParticleField({ count = 1400, reduced }) {
       colors[i * 3 + 2] = c.b;
 
       sizes[i] = 0.02 + Math.random() * 0.07;
-      drift[i] = Math.random() * Math.PI * 2;
     }
 
-    return { positions, colors, sizes, drift };
+    return { positions, colors, sizes };
   }, [count]);
 
   useFrame((state) => {

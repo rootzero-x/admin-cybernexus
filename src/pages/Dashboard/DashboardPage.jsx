@@ -170,7 +170,7 @@ export function DashboardPage() {
               <span className="text-white/80">
                 {me?.username ? `@${me.username}` : "session"}
               </span>{" "}
-              • secure cookie session
+              • bearer token session
             </div>
           </div>
 
@@ -327,7 +327,7 @@ export function DashboardPage() {
                   System Status
                 </div>
                 <div className="text-white/60 text-sm mt-1">
-                  Hozircha minimal health (cookie session). Keyin: audit log,
+                  Bearer token session + TOTP 2FA. Keyin: audit log,
                   lockouts monitor, admin RBAC.
                 </div>
 
@@ -336,7 +336,7 @@ export function DashboardPage() {
                     <div>
                       <div className="text-white font-semibold">Admin Auth</div>
                       <div className="text-white/50 text-xs mt-1">
-                        Step1 + 2FA + secure cookie
+                        Parol (bcrypt) + TOTP 2FA + bearer token
                       </div>
                     </div>
                     <Chip tone={sessionStatus.tone}>{sessionStatus.label}</Chip>

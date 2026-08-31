@@ -5,7 +5,7 @@ import { ShieldCheck, ArrowLeft, Smartphone } from "lucide-react";
 import { Toast } from "../../components/ui/Toast.jsx";
 import { adminApi } from "../../shared/api/adminApi.js";
 import { loadAuth, saveAuth, clearAuth } from "../../shared/auth/authStore.js";
-import { HoloCard, Eyebrow, NeonButton, Backdrop } from "../../design";
+import { HoloCard, Eyebrow, NeonButton } from "../../design";
 
 const DIGITS = 6;
 
@@ -132,7 +132,6 @@ export function TwoFAPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center p-6">
-      <Backdrop density={0.6} parallax={0.7} />
 
       <div className="w-full max-w-lg">
         <HoloCard glow="cyber" className="relative overflow-hidden">

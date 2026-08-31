@@ -4,7 +4,7 @@ import { ShieldCheck, Users, Activity, Lock } from "lucide-react";
 
 const items = [
   { title: "Auth", value: "Step1 + 2FA", icon: ShieldCheck },
-  { title: "Session", value: "Cookie Secure", icon: Lock },
+  { title: "Session", value: "Bearer + TOTP", icon: Lock },
   { title: "Users", value: "DB: users", icon: Users },
   { title: "Monitoring", value: "Audit soon", icon: Activity },
 ];

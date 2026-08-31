@@ -11,7 +11,6 @@ import {
   Display,
   Accent,
   NeonButton,
-  Backdrop,
   Reveal,
 } from "../../design";
 
@@ -61,7 +60,6 @@ export function LoginPage() {
 
   return (
     <div className="relative min-h-screen">
-      <Backdrop density={0.7} parallax={0.8} />
 
       <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
         <div className="grid w-full max-w-5xl items-center gap-10 md:grid-cols-2">

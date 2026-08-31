@@ -1,16 +1,25 @@
 import React from "react";
 import classNames from "classnames";
+import HoloCard from "../../design/HoloCard";
 
-export function Card({ className, children }) {
+/**
+ * Panel surface for the admin pages.
+ *
+ * Delegates to the shared HoloCard so the panel picks up the same pointer
+ * tilt, edge glow and glass treatment as the main site instead of being a
+ * separate, flatter card style.
+ */
+export function Card({ className, children, glow = "signal", interactive = true }) {
   return (
-    <div
-      className={classNames(
-        "rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl glow",
-        "shadow-[0_20px_80px_rgba(0,0,0,0.45)]",
-        className,
-      )}
+    <HoloCard
+      glow={glow}
+      interactive={interactive}
+      padded={false}
+      className={classNames("overflow-hidden", className)}
     >
       {children}
-    </div>
+    </HoloCard>
   );
 }
+
+export default Card;
