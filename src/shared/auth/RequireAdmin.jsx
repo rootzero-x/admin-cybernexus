@@ -29,7 +29,7 @@ export function RequireAdmin({ children }) {
 
   if (state.loading) {
     return (
-      <div className="min-h-screen bg-[#05070b] bg-grid flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6">
         <Spinner label="Checking admin session..." />
       </div>
     );

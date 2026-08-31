@@ -4,7 +4,7 @@ import { ShieldCheck, Users, Activity, Lock } from "lucide-react";
 
 const items = [
   { title: "Auth", value: "Step1 + 2FA", icon: ShieldCheck },
-  { title: "Session", value: "Cookie Secure", icon: Lock },
+  { title: "Session", value: "Bearer + TOTP", icon: Lock },
   { title: "Users", value: "DB: users", icon: Users },
   { title: "Monitoring", value: "Audit soon", icon: Activity },
 ];
@@ -20,7 +20,7 @@ export function StatCards() {
               <div className="text-white/60 text-xs font-semibold">
                 {it.title}
               </div>
-              <Icon size={18} className="text-emerald-300" />
+              <Icon size={18} className="text-signal-300" />
             </div>
             <div className="mt-2 text-white font-extrabold text-lg">
               {it.value}

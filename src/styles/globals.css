@@ -6,16 +6,26 @@
   color-scheme: dark;
 }
 
+/* The base colour goes on <html> ONLY.
+   The WebGL backdrop is fixed at z-index:-10, and a background on <body> is
+   painted as a normal block box — which in CSS paint order lands *after*
+   negative z-index descendants and would hide the backdrop entirely. */
+html {
+  background-color: #03060f;
+}
+
 html,
 body {
-  height: 100%;
+  min-height: 100%;
 }
 
 body {
+  background-color: transparent;
   margin: 0;
-  background: #05070b;
   color: #e6f7ee;
   font-family:
+    "Space Grotesk",
+    "Inter",
     ui-sans-serif,
     system-ui,
     -apple-system,
@@ -24,6 +34,30 @@ body {
     Arial,
     "Apple Color Emoji",
     "Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* HoloCard tilt surface (mirrors the main site's design system). */
+.cn-holo {
+  --rx: 0deg;
+  --ry: 0deg;
+  --mx: 50%;
+  --my: 50%;
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+  transform-style: preserve-3d;
+  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.cn-holo > * {
+  transform: translateZ(18px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cn-holo {
+    transform: none;
+    transition: none;
+  }
 }
 
 /* Premium subtle grid */

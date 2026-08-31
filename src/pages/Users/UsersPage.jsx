@@ -158,7 +158,7 @@ export function UsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#05070b] bg-grid">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto p-4 md:p-6">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -176,7 +176,7 @@ export function UsersPage() {
             </Button>
             <Link
               to="/admin"
-              className="text-emerald-300 hover:text-emerald-200 text-sm font-semibold"
+              className="text-signal-300 hover:text-signal-200 text-sm font-semibold"
             >
               ← Dashboard
             </Link>
@@ -295,7 +295,7 @@ export function UsersPage() {
                         </td>
                         <td className="p-3">
                           {u.is_active ? (
-                            <span className="text-emerald-300 font-semibold">
+                            <span className="text-signal-300 font-semibold">
                               Active
                             </span>
                           ) : (
