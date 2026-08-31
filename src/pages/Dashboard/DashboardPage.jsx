@@ -45,7 +45,7 @@ function fmt(ts) {
 function Chip({ children, tone = "default" }) {
   const cls =
     tone === "ok"
-      ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-200"
+      ? "border-signal-400/25 bg-signal-500/10 text-signal-200"
       : tone === "warn"
         ? "border-yellow-400/25 bg-yellow-500/10 text-yellow-200"
         : tone === "danger"
@@ -140,11 +140,11 @@ export function DashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#05070b] bg-grid relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden">
       {/* soft blobs */}
       <div className="absolute inset-0 pointer-events-none opacity-40">
-        <div className="absolute -top-48 -left-48 h-[560px] w-[560px] rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="absolute -bottom-48 -right-48 h-[560px] w-[560px] rounded-full bg-emerald-400/10 blur-3xl" />
+        <div className="absolute -top-48 -left-48 h-[560px] w-[560px] rounded-full bg-signal-500/10 blur-3xl" />
+        <div className="absolute -bottom-48 -right-48 h-[560px] w-[560px] rounded-full bg-signal-400/10 blur-3xl" />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto p-4 md:p-6">
@@ -156,7 +156,7 @@ export function DashboardPage() {
           className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
         >
           <div>
-            <div className="inline-flex items-center gap-2 text-emerald-200/90">
+            <div className="inline-flex items-center gap-2 text-signal-200/90">
               <Sparkles size={16} />
               <span className="text-xs font-semibold tracking-wide">
                 CyberNexus • Root Admin
@@ -212,7 +212,7 @@ export function DashboardPage() {
                       className={classNames(
                         "group flex items-center justify-between gap-3 rounded-xl px-3 py-2 border transition",
                         active
-                          ? "bg-emerald-500/10 border-emerald-400/30 text-white"
+                          ? "bg-signal-500/10 border-signal-400/30 text-white"
                           : "bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10",
                       )}
                     >
@@ -221,7 +221,7 @@ export function DashboardPage() {
                           size={18}
                           className={
                             active
-                              ? "text-emerald-300"
+                              ? "text-signal-300"
                               : "text-white/50 group-hover:text-white/70"
                           }
                         />
@@ -233,7 +233,7 @@ export function DashboardPage() {
                         size={16}
                         className={
                           active
-                            ? "text-emerald-300"
+                            ? "text-signal-300"
                             : "text-white/20 group-hover:text-white/40"
                         }
                       />
@@ -245,7 +245,7 @@ export function DashboardPage() {
               <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-xs text-white/50">Session expires</div>
                 <div className="text-sm text-white mt-1 flex items-center gap-2">
-                  <Clock size={16} className="text-emerald-300" />
+                  <Clock size={16} className="text-signal-300" />
                   <span>{me?.expires_at ? fmt(me.expires_at) : "—"}</span>
                 </div>
               </div>
@@ -293,7 +293,7 @@ export function DashboardPage() {
                     <div className="mt-3">
                       <Link
                         to="/admin/users"
-                        className="text-emerald-300 hover:text-emerald-200 text-sm font-semibold"
+                        className="text-signal-300 hover:text-signal-200 text-sm font-semibold"
                       >
                         Open Users →
                       </Link>
@@ -313,7 +313,7 @@ export function DashboardPage() {
                     <div className="mt-3">
                       <Link
                         to="/admin/sessions"
-                        className="text-emerald-300 hover:text-emerald-200 text-sm font-semibold"
+                        className="text-signal-300 hover:text-signal-200 text-sm font-semibold"
                       >
                         Open Sessions →
                       </Link>
@@ -392,7 +392,7 @@ export function DashboardPage() {
                       className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
                     >
                       <div className="h-9 w-9 rounded-xl border border-white/10 bg-black/40 flex items-center justify-center">
-                        <Icon size={18} className="text-emerald-300" />
+                        <Icon size={18} className="text-signal-300" />
                       </div>
                       <div className="min-w-0">
                         <div className="text-white font-semibold">

@@ -7,7 +7,7 @@ export function Button({ className, variant = "primary", loading, ...props }) {
   const styles =
     variant === "ghost"
       ? "bg-white/5 hover:bg-white/10 border border-white/10"
-      : "bg-emerald-500/90 hover:bg-emerald-500 text-black";
+      : "bg-signal-500/90 hover:bg-signal-500 text-black";
 
   return (
     <button

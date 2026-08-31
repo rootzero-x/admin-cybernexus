@@ -11,6 +11,13 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
 
+    <!-- Design system fonts: Space Grotesk (display) + JetBrains Mono (code). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    />
     <title>CyberNexus Admin Panel • Secure Control Center</title>
 
     <!-- ===================== -->
@@ -82,14 +89,20 @@
     <!-- Fonts (System-first, no external tracking) -->
     <!-- ===================== -->
     <style>
+      /* Anti-flash paint, before the stylesheet arrives.
+         Only <html> carries a colour: the WebGL backdrop is fixed at
+         z-index:-10, and a background on <body> or #root is painted after
+         negative z-index descendants, which would hide it completely. */
       html {
-        background-color: #05070b;
+        background-color: #03060f;
       }
       body {
         margin: 0;
-        background-color: #05070b;
+        background-color: transparent;
         color: #e6f7ee;
         font-family:
+          "Space Grotesk",
+          "Inter",
           ui-sans-serif,
           system-ui,
           -apple-system,
@@ -102,10 +115,9 @@
           "Segoe UI Emoji";
       }
 
-      /* Prevent white flash */
       #root {
         min-height: 100vh;
-        background-color: #05070b;
+        background-color: transparent;
       }
     </style>
   </head>

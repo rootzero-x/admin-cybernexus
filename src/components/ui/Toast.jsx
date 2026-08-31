@@ -6,7 +6,7 @@ export function Toast({ type = "info", title, message, onClose }) {
     type === "error"
       ? "border-red-500/30 bg-red-500/10"
       : type === "success"
-      ? "border-emerald-500/30 bg-emerald-500/10"
+      ? "border-signal-500/30 bg-signal-500/10"
       : "border-white/10 bg-white/5";
 
   return (
