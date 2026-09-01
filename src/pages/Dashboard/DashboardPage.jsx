@@ -1,415 +1,320 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+// src/pages/Dashboard/DashboardPage.jsx
+import React, { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import classNames from "classnames";
-import { motion } from "framer-motion";
 import {
-  LayoutDashboard,
-  Users,
-  Fingerprint,
-  LogOut,
-  ShieldCheck,
-  Activity,
-  Clock,
-  Settings,
-  Sparkles,
-  ChevronRight,
+  Award,
+  Eye,
+  FileClock,
+  Mail,
+  Newspaper,
   RefreshCw,
+  Send,
+  ShieldCheck,
+  TrendingUp,
+  Users,
 } from "lucide-react";
 
-import { Card } from "../../components/ui/Card.jsx";
-import { Button } from "../../components/ui/Button.jsx";
 import { adminApi } from "../../shared/api/adminApi.js";
-import { clearAuth, saveAuth, loadAuth } from "../../shared/auth/authStore.js";
-import { StatCards } from "./sections/StatCards.jsx";
+import { AdminShell, StatusPill } from "../../shared/ui/AdminShell.jsx";
+import { TrendChart, BarList } from "../../shared/ui/Chart.jsx";
+import { Banner } from "../../shared/ui/Overlays.jsx";
+import { Card } from "../../components/ui/Card.jsx";
+import { formatNumber, formatDateTime, timeAgo, hostOf } from "../../shared/lib/format.js";
 
-const navItems = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/admin/users", label: "Users", icon: Users },
-  { to: "/admin/sessions", label: "Sessions", icon: Fingerprint },
-];
+function KpiCard({ icon: Icon, label, value, delta, to, tone = "signal" }) {
+  const body = (
+    <Card
+      glow={tone}
+      className={classNames("h-full p-5", to && "transition-transform hover:-translate-y-0.5")}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span
+          className={classNames(
+            "grid h-10 w-10 place-items-center rounded-xl border",
+            tone === "cyber"
+              ? "border-cyber-500/30 bg-cyber-500/10"
+              : tone === "plasma"
+                ? "border-plasma/30 bg-plasma/10"
+                : "border-signal-500/30 bg-signal-500/10",
+          )}
+        >
+          <Icon
+            className={classNames(
+              "h-4.5 w-4.5",
+              tone === "cyber"
+                ? "text-cyber-400"
+                : tone === "plasma"
+                  ? "text-plasma"
+                  : "text-signal-400",
+            )}
+          />
+        </span>
+        {delta ? (
+          <span className="rounded-full border border-white/10 bg-white/[.04] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/45">
+            {delta}
+          </span>
+        ) : null}
+      </div>
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 10 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: "easeOut" } },
-};
+      <div className="mt-4 font-display text-3xl font-bold tabular-nums text-white">
+        {formatNumber(value)}
+      </div>
+      <div className="mt-1 text-[11px] font-bold uppercase tracking-[.16em] text-white/40">
+        {label}
+      </div>
+    </Card>
+  );
 
-function fmt(ts) {
-  if (!ts) return "—";
-  try {
-    return new Date(Number(ts) * 1000).toLocaleString();
-  } catch {
-    return "—";
-  }
+  return to ? (
+    <Link to={to} className="block h-full">
+      {body}
+    </Link>
+  ) : (
+    body
+  );
 }
 
-function Chip({ children, tone = "default" }) {
-  const cls =
-    tone === "ok"
-      ? "border-signal-400/25 bg-signal-500/10 text-signal-200"
-      : tone === "warn"
-        ? "border-yellow-400/25 bg-yellow-500/10 text-yellow-200"
-        : tone === "danger"
-          ? "border-red-400/25 bg-red-500/10 text-red-200"
-          : "border-white/10 bg-white/5 text-white/70";
+function ActionRow({ entry }) {
+  const meta = entry.meta || {};
+
+  // Audit meta differs per action; show whichever identifying field is there.
+  const detail =
+    meta.email || meta.cert_id || meta.subject || meta.title ||
+    (meta.count !== undefined ? `${meta.count} ta` : "") ||
+    (meta.id !== undefined ? `#${meta.id}` : "");
 
   return (
-    <span
-      className={classNames(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs",
-        cls,
-      )}
-    >
-      {children}
-    </span>
+    <div className="flex items-start gap-3 border-b border-white/5 py-3 last:border-0">
+      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-signal-400/70" />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <span className="font-mono text-xs text-signal-300">{entry.action}</span>
+          <span className="text-xs text-white/35">@{entry.actor}</span>
+        </div>
+        {detail ? (
+          <div className="mt-0.5 truncate text-xs text-white/50">{String(detail)}</div>
+        ) : null}
+      </div>
+      <span className="shrink-0 text-[11px] text-white/25">{timeAgo(entry.created_at)}</span>
+    </div>
+  );
+}
+
+function ModuleCard({ to, icon: Icon, title, primary, note }) {
+  return (
+    <Link to={to} className="block">
+      <Card className="h-full p-5 transition-transform hover:-translate-y-0.5">
+        <div className="flex items-center gap-2.5">
+          <Icon className="h-4 w-4 text-cyber-400" />
+          <span className="text-sm font-semibold text-white">{title}</span>
+        </div>
+        <div className="mt-3 font-display text-2xl font-bold tabular-nums text-white">
+          {formatNumber(primary)}
+        </div>
+        <div className="mt-1 truncate text-[11px] text-white/35">{note}</div>
+      </Card>
+    </Link>
   );
 }
 
 export function DashboardPage() {
-  const nav = useNavigate();
-  const loc = useLocation();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [me, setMe] = useState(loadAuth().me || null);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const activePath = useMemo(() => loc.pathname, [loc.pathname]);
-
-  useEffect(() => {
-    // initial me refresh
-    adminApi
-      .me()
-      .then((d) => {
-        setMe(d);
-        saveAuth({ me: d });
-      })
-      .catch(() => {});
+  const load = useCallback(async (signal) => {
+    setLoading(true);
+    setError("");
+    try {
+      setData(await adminApi.stats({ signal }));
+    } catch (e) {
+      if (e.name === "AbortError") return;
+      setError(e.message || "Statistikani yuklab bo'lmadi");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  async function onLogout() {
-    setLoggingOut(true);
-    try {
-      await adminApi.logout();
-    } catch {
-      // ignore
-    } finally {
-      clearAuth();
-      nav("/", { replace: true });
-      setLoggingOut(false);
-    }
-  }
+  useEffect(() => {
+    const ctrl = new AbortController();
+    load(ctrl.signal);
+    return () => ctrl.abort();
+  }, [load]);
 
-  async function onRefresh() {
-    setRefreshing(true);
-    try {
-      const d = await adminApi.me();
-      setMe(d);
-      saveAuth({ me: d });
-    } finally {
-      setRefreshing(false);
-    }
-  }
-
-  const sessionStatus = useMemo(() => {
-    if (!me?.expires_at) return { label: "Unknown", tone: "warn" };
-    const left = me.expires_at - Math.floor(Date.now() / 1000);
-    if (left <= 0) return { label: "Expired", tone: "danger" };
-    if (left < 60 * 10) return { label: "Expiring soon", tone: "warn" };
-    return { label: "Active", tone: "ok" };
-  }, [me]);
-
-  // Mock activity (keyin audit_list.php bilan bog'laymiz)
-  const recent = useMemo(
-    () => [
-      {
-        title: "Admin session verified",
-        meta: `@${me?.username || "root"} • ${fmt(Math.floor(Date.now() / 1000))}`,
-        icon: ShieldCheck,
-      },
-      {
-        title: "Users module ready",
-        meta: "Create / Edit / Delete • filters • reset password",
-        icon: Users,
-      },
-      {
-        title: "Sessions control ready",
-        meta: "List + revoke (user/admin)",
-        icon: Fingerprint,
-      },
-    ],
-    [me?.username],
-  );
+  const u = data?.users;
+  const v = data?.visits;
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* soft blobs */}
-      <div className="absolute inset-0 pointer-events-none opacity-40">
-        <div className="absolute -top-48 -left-48 h-[560px] w-[560px] rounded-full bg-signal-500/10 blur-3xl" />
-        <div className="absolute -bottom-48 -right-48 h-[560px] w-[560px] rounded-full bg-signal-400/10 blur-3xl" />
-      </div>
-
-      <div className="relative z-10 max-w-7xl mx-auto p-4 md:p-6">
-        {/* Top bar */}
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
-        >
-          <div>
-            <div className="inline-flex items-center gap-2 text-signal-200/90">
-              <Sparkles size={16} />
-              <span className="text-xs font-semibold tracking-wide">
-                CyberNexus • Root Admin
-              </span>
-            </div>
-            <div className="text-white font-extrabold text-2xl md:text-3xl mt-2">
-              Premium Control Center
-            </div>
-            <div className="text-white/60 text-sm mt-1">
-              Root access •{" "}
-              <span className="text-white/80">
-                {me?.username ? `@${me.username}` : "session"}
-              </span>{" "}
-              • bearer token session
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Chip tone={sessionStatus.tone}>
-              <Activity size={14} className="mr-1" /> {sessionStatus.label}
-            </Chip>
-
-            <Button variant="ghost" loading={refreshing} onClick={onRefresh}>
-              <RefreshCw size={18} /> Refresh
-            </Button>
-
-            <Button loading={loggingOut} variant="ghost" onClick={onLogout}>
-              <LogOut size={18} /> Logout
-            </Button>
-          </div>
-        </motion.div>
-
-        {/* Layout */}
-        <div className="mt-6 grid lg:grid-cols-[300px_1fr] gap-6">
-          {/* Sidebar */}
-          <motion.div variants={fadeUp} initial="hidden" animate="show">
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="text-white/80 text-sm font-semibold">
-                  Navigation
-                </div>
-                <Settings size={16} className="text-white/40" />
-              </div>
-
-              <div className="mt-3 space-y-2">
-                {navItems.map((it) => {
-                  const Icon = it.icon;
-                  const active = activePath === it.to;
-                  return (
-                    <Link
-                      key={it.to}
-                      to={it.to}
-                      className={classNames(
-                        "group flex items-center justify-between gap-3 rounded-xl px-3 py-2 border transition",
-                        active
-                          ? "bg-signal-500/10 border-signal-400/30 text-white"
-                          : "bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10",
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon
-                          size={18}
-                          className={
-                            active
-                              ? "text-signal-300"
-                              : "text-white/50 group-hover:text-white/70"
-                          }
-                        />
-                        <span className="font-semibold text-sm">
-                          {it.label}
-                        </span>
-                      </div>
-                      <ChevronRight
-                        size={16}
-                        className={
-                          active
-                            ? "text-signal-300"
-                            : "text-white/20 group-hover:text-white/40"
-                        }
-                      />
-                    </Link>
-                  );
-                })}
-              </div>
-
-              <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-xs text-white/50">Session expires</div>
-                <div className="text-sm text-white mt-1 flex items-center gap-2">
-                  <Clock size={16} className="text-signal-300" />
-                  <span>{me?.expires_at ? fmt(me.expires_at) : "—"}</span>
-                </div>
-              </div>
-
-              <div className="mt-4 text-xs text-white/40">
-                Tip: Users va Sessions sahifalari endi real ishlayapti. Audit
-                log keyingi modulda ulanadi.
-              </div>
-            </Card>
-          </motion.div>
-
-          {/* Main */}
-          <motion.div
-            variants={fadeUp}
-            initial="hidden"
-            animate="show"
-            className="space-y-6"
+    <AdminShell
+      title="Boshqaruv paneli"
+      subtitle={data ? `Yangilandi: ${formatDateTime(data.generated_at)}` : "Yuklanmoqda..."}
+      actions={
+        <>
+          <StatusPill tone={error ? "danger" : "ok"}>{error ? "Xato" : "Jonli"}</StatusPill>
+          <button
+            type="button"
+            onClick={() => load()}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/12 px-3 py-2 text-xs font-bold uppercase tracking-wider text-white/60 transition-colors hover:border-white/25 hover:text-white disabled:opacity-50"
           >
-            {/* Stat cards */}
-            <StatCards />
+            <RefreshCw className={classNames("h-3.5 w-3.5", loading && "animate-spin")} />
+            <span className="hidden sm:inline">Yangilash</span>
+          </button>
+        </>
+      }
+    >
+      <Banner tone="error" onDismiss={() => setError("")}>
+        {error}
+      </Banner>
 
-            {/* Overview */}
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card className="p-5">
-                <div className="text-white font-bold text-lg">
-                  Quick Overview
-                </div>
-                <div className="text-white/60 text-sm mt-1">
-                  Root panel orqali userlarni boshqarish, sessionlarni revoke
-                  qilish va xavfsizlik monitoringi.
-                </div>
-
-                <div className="mt-4 grid gap-3">
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="text-white font-semibold">
-                        Users Control
-                      </div>
-                      <Chip tone="ok">Ready</Chip>
-                    </div>
-                    <div className="text-white/60 text-sm mt-1">
-                      Create / Edit / Delete • filters • password reset • active
-                      toggle
-                    </div>
-                    <div className="mt-3">
-                      <Link
-                        to="/admin/users"
-                        className="text-signal-300 hover:text-signal-200 text-sm font-semibold"
-                      >
-                        Open Users →
-                      </Link>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="text-white font-semibold">
-                        Sessions Control
-                      </div>
-                      <Chip tone="ok">Ready</Chip>
-                    </div>
-                    <div className="text-white/60 text-sm mt-1">
-                      User sessions + Admin sessions • list + revoke
-                    </div>
-                    <div className="mt-3">
-                      <Link
-                        to="/admin/sessions"
-                        className="text-signal-300 hover:text-signal-200 text-sm font-semibold"
-                      >
-                        Open Sessions →
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="p-5">
-                <div className="text-white font-bold text-lg">
-                  System Status
-                </div>
-                <div className="text-white/60 text-sm mt-1">
-                  Bearer token session + TOTP 2FA. Keyin: audit log,
-                  lockouts monitor, admin RBAC.
-                </div>
-
-                <div className="mt-4 grid gap-3">
-                  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-4">
-                    <div>
-                      <div className="text-white font-semibold">Admin Auth</div>
-                      <div className="text-white/50 text-xs mt-1">
-                        Parol (bcrypt) + TOTP 2FA + bearer token
-                      </div>
-                    </div>
-                    <Chip tone={sessionStatus.tone}>{sessionStatus.label}</Chip>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-4">
-                    <div>
-                      <div className="text-white font-semibold">
-                        Bruteforce Protection
-                      </div>
-                      <div className="text-white/50 text-xs mt-1">
-                        3 fails → 5m, repeat → 10m, 20m...
-                      </div>
-                    </div>
-                    <Chip tone="ok">Enabled</Chip>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-4">
-                    <div>
-                      <div className="text-white font-semibold">
-                        Audit Logging
-                      </div>
-                      <div className="text-white/50 text-xs mt-1">
-                        Create/Update/Delete actions stored
-                      </div>
-                    </div>
-                    <Chip tone="warn">UI next</Chip>
-                  </div>
-                </div>
-              </Card>
-            </div>
-
-            {/* Recent activity */}
-            <Card className="p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-white font-bold text-lg">
-                    Recent Activity
-                  </div>
-                  <div className="text-white/60 text-sm mt-1">
-                    Bu joy keyin real audit log bilan avtomatik to‘lib boradi.
-                  </div>
-                </div>
-                <Chip>Mock</Chip>
-              </div>
-
-              <div className="mt-4 grid gap-3">
-                {recent.map((it, idx) => {
-                  const Icon = it.icon;
-                  return (
-                    <div
-                      key={idx}
-                      className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
-                    >
-                      <div className="h-9 w-9 rounded-xl border border-white/10 bg-black/40 flex items-center justify-center">
-                        <Icon size={18} className="text-signal-300" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-white font-semibold">
-                          {it.title}
-                        </div>
-                        <div className="text-white/55 text-xs mt-1">
-                          {it.meta}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-          </motion.div>
-        </div>
+      {/* ---------------- KPI row ---------------- */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard
+          icon={Users}
+          label="Foydalanuvchilar"
+          value={u?.total ?? 0}
+          delta={u?.new_7d ? `+${u.new_7d} / 7 kun` : null}
+          to="/admin/users"
+        />
+        <KpiCard
+          icon={Eye}
+          label="Tashriflar (7 kun)"
+          value={v?.week ?? 0}
+          delta={v?.unique_week ? `${formatNumber(v.unique_week)} tashrifchi` : null}
+          to="/admin/visits"
+          tone="cyber"
+        />
+        <KpiCard
+          icon={Mail}
+          label="Yangi xabarlar"
+          value={data?.messages?.new ?? 0}
+          delta={data?.messages?.total ? `${data.messages.total} jami` : null}
+          to="/admin/messages"
+          tone={data?.messages?.new ? "plasma" : "signal"}
+        />
+        <KpiCard
+          icon={ShieldCheck}
+          label="Faol sessiyalar"
+          value={data?.sessions?.user ?? 0}
+          delta={data?.sessions?.admin ? `${data.sessions.admin} admin` : null}
+          to="/admin/sessions"
+          tone="cyber"
+        />
       </div>
-    </div>
+
+      {/* ---------------- Chart ---------------- */}
+      <Card className="mt-4 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-base font-bold text-white">So'nggi 30 kun</h2>
+            <p className="mt-0.5 text-xs text-white/40">
+              Sahifa ko'rishlari, noyob tashrifchilar va ro'yxatdan o'tishlar
+            </p>
+          </div>
+          <TrendingUp className="h-4 w-4 text-white/25" />
+        </div>
+
+        <div className="mt-5">
+          <TrendChart series={data?.series || []} />
+        </div>
+      </Card>
+
+      {/* ---------------- Breakdown ---------------- */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <Card className="p-5">
+          <h2 className="font-display text-base font-bold text-white">Eng ko'p ochilgan</h2>
+          <p className="mt-0.5 text-xs text-white/40">30 kunlik sahifalar</p>
+          <div className="mt-4">
+            <BarList items={data?.top_pages || []} valueKey="hits" labelKey="path" />
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <h2 className="font-display text-base font-bold text-white">Qayerdan kelishgan</h2>
+          <p className="mt-0.5 text-xs text-white/40">Tashqi manbalar</p>
+          <div className="mt-4">
+            <BarList
+              items={(data?.top_referrers || []).map((r) => ({
+                host: hostOf(r.referrer),
+                hits: r.hits,
+              }))}
+              valueKey="hits"
+              labelKey="host"
+              empty="Hali tashqi havoladan kirish yo'q"
+            />
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display text-base font-bold text-white">Oxirgi amallar</h2>
+              <p className="mt-0.5 text-xs text-white/40">Audit jurnalidan</p>
+            </div>
+            <Link
+              to="/admin/audit"
+              className="text-xs font-bold text-signal-300 hover:text-signal-200"
+            >
+              Barchasi →
+            </Link>
+          </div>
+
+          <div className="mt-3">
+            {(data?.recent_audit || []).length === 0 ? (
+              <div className="py-8 text-center text-sm text-white/30">Hali amal yo'q</div>
+            ) : (
+              data.recent_audit.map((e) => <ActionRow key={e.id} entry={e} />)
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* ---------------- Modules ---------------- */}
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <ModuleCard
+          to="/admin/certificates"
+          icon={Award}
+          title="Sertifikatlar"
+          primary={data?.certificates?.valid ?? 0}
+          note={
+            data?.certificates?.revoked
+              ? `${data.certificates.revoked} ta bekor qilingan`
+              : "Bekor qilingani yo'q"
+          }
+        />
+        <ModuleCard
+          to="/admin/news"
+          icon={Newspaper}
+          title="Yangiliklar"
+          primary={data?.news?.total ?? 0}
+          note={
+            data?.news?.last_fetch
+              ? `Oxirgi yig'ish: ${timeAgo(data.news.last_fetch)}`
+              : "Hali yig'ilmagan"
+          }
+        />
+        <ModuleCard
+          to="/admin/bot"
+          icon={Send}
+          title="Telegram bot"
+          primary={data?.bot?.available ? data.bot.users : 0}
+          note={
+            data?.bot?.available
+              ? `${data.bot.new_7d} ta yangi / 7 kun`
+              : "Bot bazasi ulanmagan"
+          }
+        />
+        <ModuleCard
+          to="/admin/audit"
+          icon={FileClock}
+          title="Audit"
+          primary={(data?.recent_audit || []).length}
+          note="Oxirgi amallar"
+        />
+      </div>
+    </AdminShell>
   );
 }
+
+export default DashboardPage;

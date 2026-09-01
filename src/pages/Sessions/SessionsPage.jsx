@@ -1,254 +1,299 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { RefreshCw, Ban } from "lucide-react";
-import { Card } from "../../components/ui/Card.jsx";
-import { Button } from "../../components/ui/Button.jsx";
-import { Toast } from "../../components/ui/Toast.jsx";
-import { adminApi } from "../../shared/api/adminApi.js";
+// src/pages/Sessions/SessionsPage.jsx
+import React, { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import classNames from "classnames";
+import { MonitorSmartphone, ShieldCheck, Trash2, X } from "lucide-react";
 
-function fmt(ts) {
-  if (!ts) return "—";
-  try {
-    return new Date(Number(ts) * 1000).toLocaleString();
-  } catch {
-    return "—";
+import { adminApi } from "../../shared/api/adminApi.js";
+import { AdminShell } from "../../shared/ui/AdminShell.jsx";
+import {
+  TableShell, Th, Td, Tr, EmptyRow, LoadingBar, Pagination, FilterTabs,
+} from "../../shared/ui/DataTable.jsx";
+import { ConfirmDialog, SearchInput, Banner } from "../../shared/ui/Overlays.jsx";
+import { formatDateTime, timeAgo, describeDevice } from "../../shared/lib/format.js";
+
+function Avatar({ url, name }) {
+  const [broken, setBroken] = useState(false);
+  const initials = (name || "U").trim().slice(0, 2).toUpperCase();
+
+  if (url && !broken) {
+    return (
+      <img
+        src={url}
+        alt=""
+        referrerPolicy="no-referrer"
+        onError={() => setBroken(true)}
+        className="h-8 w-8 shrink-0 rounded-lg border border-white/12 object-cover"
+      />
+    );
   }
+  return (
+    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-signal-500/25 bg-signal-500/10 text-[10px] font-bold text-signal-300">
+      {initials}
+    </span>
+  );
+}
+
+/** How long is left on a session, or how long ago it ran out. */
+function expiry(ts, active) {
+  const diff = Math.abs(Number(ts) * 1000 - Date.now());
+  const hours = Math.round(diff / 3600000);
+  const label = hours >= 48 ? `${Math.round(hours / 24)} kun` : `${hours} soat`;
+  return active ? `${label} qoldi` : `${label} oldin tugagan`;
 }
 
 export function SessionsPage() {
-  const [type, setType] = useState("user"); // user | admin
-  const [page, setPage] = useState(1);
-  const limit = 30;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const userId = searchParams.get("user_id") || "";
 
-  const [loading, setLoading] = useState(true);
+  const [type, setType] = useState("user");
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
-  const [toast, setToast] = useState(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(30);
+  const [q, setQ] = useState("");
+  const [state, setState] = useState("active");
+  const [sort, setSort] = useState("created_at");
+  const [dir, setDir] = useState("desc");
 
-  async function load() {
-    setLoading(true);
-    setToast(null);
-    try {
-      const res = await adminApi.sessionsList({ type, page, limit });
-      setItems(res.items || []);
-      setTotal(res.total || 0);
-    } catch (e) {
-      setToast({ type: "error", title: "Load failed", message: e.message });
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [confirm, setConfirm] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(
+    async (signal) => {
+      setLoading(true);
+      setError("");
+      try {
+        const params = { type, q, state, page, limit, sort, dir };
+        if (type === "user" && userId) params.user_id = userId;
+        const res = await adminApi.sessionsList(params, { signal });
+        setItems(res.items || []);
+        setTotal(res.total || 0);
+        setLimit(res.limit || limit);
+      } catch (e) {
+        if (e.name === "AbortError") return;
+        setError(e.message || "Sessiyalarni yuklab bo'lmadi");
+      } finally {
+        setLoading(false);
+      }
+    },
+    // limit is deliberately absent: the server echoes back the clamped value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [type, q, state, page, sort, dir, userId],
+  );
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, page]);
+    const ctrl = new AbortController();
+    load(ctrl.signal);
+    return () => ctrl.abort();
+  }, [load]);
 
-  const pages = Math.max(1, Math.ceil(total / limit));
+  useEffect(() => setPage(1), [type, q, state, userId]);
 
-  async function revoke(id) {
-    const yes = confirm(`Revoke ${type} session #${id}?`);
-    if (!yes) return;
-    try {
-      await adminApi.sessionRevoke(type, id);
-      await load();
-      setToast({
-        type: "success",
-        title: "Revoked",
-        message: "Session removed.",
-      });
-    } catch (e) {
-      setToast({ type: "error", title: "Revoke failed", message: e.message });
+  // `email` only exists on the site listing; swap so the sort key stays valid
+  // when the admin flips between the two tables.
+  useEffect(() => {
+    if (type === "admin" && sort === "email") setSort("username");
+    if (type === "user" && sort === "username") setSort("email");
+  }, [type, sort]);
+
+  const onSort = (key) => {
+    if (sort === key) setDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSort(key);
+      setDir("desc");
     }
-  }
+  };
+
+  const revoke = async () => {
+    setBusy(true);
+    try {
+      await adminApi.sessionRevoke(type, confirm.id);
+      setNotice("Sessiya tugatildi — qurilma qaytadan kirishi kerak bo'ladi.");
+      setConfirm(null);
+      load();
+    } catch (e) {
+      setError(e.message || "Tugatib bo'lmadi");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const clearUserFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("user_id");
+    setSearchParams(next, { replace: true });
+  };
+
+  const isAdmin = type === "admin";
 
   return (
-    <div className="min-h-screen">
-      <div className="max-w-7xl mx-auto p-4 md:p-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="text-white font-extrabold text-2xl">Sessions</div>
-            <div className="text-white/60 text-sm mt-1">
-              User sessions (platform) • Admin sessions (admin panel)
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={load} loading={loading}>
-              <RefreshCw size={18} /> Refresh
-            </Button>
-            <Link
-              to="/admin"
-              className="text-signal-300 hover:text-signal-200 text-sm font-semibold"
-            >
-              ← Dashboard
-            </Link>
-          </div>
-        </div>
+    <AdminShell
+      title="Sessiyalar"
+      subtitle={`${total} ta ${isAdmin ? "admin" : "sayt"} sessiyasi`}
+    >
+      <Banner tone="error" onDismiss={() => setError("")}>{error}</Banner>
+      <Banner tone="ok" onDismiss={() => setNotice("")}>{notice}</Banner>
 
-        <div className="mt-4 flex items-center gap-2">
-          <Button
-            variant={type === "user" ? "primary" : "ghost"}
-            onClick={() => {
-              setType("user");
-              setPage(1);
-            }}
-          >
-            User sessions
-          </Button>
-          <Button
-            variant={type === "admin" ? "primary" : "ghost"}
-            onClick={() => {
-              setType("admin");
-              setPage(1);
-            }}
-          >
-            Admin sessions
-          </Button>
-          <div className="text-white/60 text-sm ml-auto">
-            Total: <span className="text-white">{total}</span> • Page {page}/
-            {pages}
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <Card className="p-0 overflow-hidden">
-            <div className="overflow-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-white/5 text-white/70">
-                  {type === "user" ? (
-                    <tr>
-                      <th className="text-left p-3">ID</th>
-                      <th className="text-left p-3">User</th>
-                      <th className="text-left p-3">Role</th>
-                      <th className="text-left p-3">IP</th>
-                      <th className="text-left p-3">Created</th>
-                      <th className="text-left p-3">Expires</th>
-                      <th className="text-right p-3">Action</th>
-                    </tr>
-                  ) : (
-                    <tr>
-                      <th className="text-left p-3">ID</th>
-                      <th className="text-left p-3">Admin</th>
-                      <th className="text-left p-3">IP</th>
-                      <th className="text-left p-3">Created</th>
-                      <th className="text-left p-3">Expires</th>
-                      <th className="text-right p-3">Action</th>
-                    </tr>
-                  )}
-                </thead>
-
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td
-                        className="p-4 text-white/60"
-                        colSpan={type === "user" ? 7 : 6}
-                      >
-                        Loading...
-                      </td>
-                    </tr>
-                  ) : items.length ? (
-                    items.map((s) =>
-                      type === "user" ? (
-                        <tr
-                          key={s.id}
-                          className="border-t border-white/10 hover:bg-white/5"
-                        >
-                          <td className="p-3 text-white/70">{s.id}</td>
-                          <td className="p-3 text-white">
-                            {s.email}
-                            <div className="text-xs text-white/50">
-                              {s.full_name || "—"}
-                            </div>
-                          </td>
-                          <td className="p-3 text-white/70">{s.role}</td>
-                          <td className="p-3 text-white/70">{s.created_ip}</td>
-                          <td className="p-3 text-white/70">
-                            {fmt(s.created_at)}
-                          </td>
-                          <td className="p-3 text-white/70">
-                            {fmt(s.expires_at)}
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center justify-end">
-                              <Button
-                                variant="ghost"
-                                onClick={() => revoke(s.id)}
-                              >
-                                <Ban size={18} /> Revoke
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : (
-                        <tr
-                          key={s.id}
-                          className="border-t border-white/10 hover:bg-white/5"
-                        >
-                          <td className="p-3 text-white/70">{s.id}</td>
-                          <td className="p-3 text-white">{s.username}</td>
-                          <td className="p-3 text-white/70">{s.ip}</td>
-                          <td className="p-3 text-white/70">
-                            {fmt(s.created_at)}
-                          </td>
-                          <td className="p-3 text-white/70">
-                            {fmt(s.expires_at)}
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center justify-end">
-                              <Button
-                                variant="ghost"
-                                onClick={() => revoke(s.id)}
-                              >
-                                <Ban size={18} /> Revoke
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ),
-                    )
-                  ) : (
-                    <tr>
-                      <td
-                        className="p-4 text-white/60"
-                        colSpan={type === "user" ? 7 : 6}
-                      >
-                        No sessions found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex items-center justify-between p-3 border-t border-white/10">
-              <Button
-                variant="ghost"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Prev
-              </Button>
-              <div className="text-white/60 text-sm">
-                Page <span className="text-white">{page}</span> / {pages}
-              </div>
-              <Button
-                variant="ghost"
-                disabled={page >= pages}
-                onClick={() => setPage((p) => Math.min(pages, p + 1))}
-              >
-                Next
-              </Button>
-            </div>
-          </Card>
-        </div>
-
-        {toast ? (
-          <div className="mt-4">
-            <Toast {...toast} onClose={() => setToast(null)} />
-          </div>
-        ) : null}
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
+        <FilterTabs
+          value={type}
+          onChange={setType}
+          options={[
+            { value: "user", label: "Sayt" },
+            { value: "admin", label: "Admin panel" },
+          ]}
+        />
+        <SearchInput
+          value={q}
+          onChange={setQ}
+          placeholder={isAdmin ? "Login, IP yoki brauzer..." : "Email, ism, IP yoki brauzer..."}
+        />
+        <FilterTabs
+          value={state}
+          onChange={setState}
+          options={[
+            { value: "active", label: "Faol" },
+            { value: "expired", label: "Tugagan" },
+            { value: "", label: "Barchasi" },
+          ]}
+        />
       </div>
-    </div>
+
+      {userId && !isAdmin ? (
+        <div className="mb-3 inline-flex items-center gap-2 rounded-xl border border-cyber-500/25 bg-cyber-500/[.07] px-3 py-2 text-xs text-cyber-200">
+          Faqat #{userId} hisobining qurilmalari
+          <button
+            type="button"
+            onClick={clearUserFilter}
+            aria-label="Filtrni olib tashlash"
+            className="grid h-5 w-5 place-items-center rounded-md hover:bg-white/10"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ) : null}
+
+      <LoadingBar active={loading} />
+
+      <TableShell className="mt-2">
+        <thead>
+          <tr>
+            {isAdmin ? (
+              <Th sortKey="username" sort={sort} dir={dir} onSort={onSort}>Admin</Th>
+            ) : (
+              <Th sortKey="email" sort={sort} dir={dir} onSort={onSort}>Foydalanuvchi</Th>
+            )}
+            <Th>Qurilma</Th>
+            <Th align="center">Holat</Th>
+            <Th sortKey="created_at" sort={sort} dir={dir} onSort={onSort}>Kirgan</Th>
+            <Th sortKey="expires_at" sort={sort} dir={dir} onSort={onSort}>Muddat</Th>
+            <Th align="right" />
+          </tr>
+        </thead>
+        <tbody>
+          {items.length === 0 && !loading ? (
+            <EmptyRow
+              colSpan={6}
+              icon={MonitorSmartphone}
+              title="Sessiya topilmadi"
+              body={
+                q || userId
+                  ? "Filtrni o'zgartirib ko'ring."
+                  : state === "active"
+                    ? "Hozir hech kim kirmagan."
+                    : "Yozuv yo'q."
+              }
+            />
+          ) : (
+            items.map((s) => (
+              <Tr key={`${type}-${s.id}`}>
+                <Td>
+                  {isAdmin ? (
+                    <div className="flex items-center gap-2.5">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-plasma/25 bg-plasma/10">
+                        <ShieldCheck className="h-3.5 w-3.5 text-plasma" />
+                      </span>
+                      <span className="font-mono text-xs text-white/80">{s.username}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <Avatar url={s.avatar_url} name={s.full_name || s.email} />
+                      <div className="min-w-0">
+                        <div className="truncate text-sm text-white/85">
+                          {s.full_name || "Ism yo'q"}
+                        </div>
+                        <div className="truncate text-xs text-white/35">{s.email}</div>
+                      </div>
+                    </div>
+                  )}
+                </Td>
+                <Td>
+                  <div className="text-xs text-white/60">{describeDevice(s.ua)}</div>
+                  <div className="font-mono text-[11px] text-white/25">{s.ip}</div>
+                </Td>
+                <Td align="center">
+                  <span
+                    className={classNames(
+                      "rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                      s.active
+                        ? "border-signal-500/30 bg-signal-500/10 text-signal-300"
+                        : "border-white/10 bg-white/5 text-white/35",
+                    )}
+                  >
+                    {s.active ? "Faol" : "Tugagan"}
+                  </span>
+                </Td>
+                <Td>
+                  <div className="whitespace-nowrap text-xs text-white/55">
+                    {timeAgo(s.created_at)}
+                  </div>
+                  <div className="whitespace-nowrap text-[11px] text-white/25">
+                    {formatDateTime(s.created_at)}
+                  </div>
+                </Td>
+                <Td>
+                  <span className="whitespace-nowrap text-xs text-white/45">
+                    {expiry(s.expires_at, s.active)}
+                  </span>
+                </Td>
+                <Td align="right">
+                  <button
+                    type="button"
+                    onClick={() => setConfirm(s)}
+                    aria-label="Sessiyani tugatish"
+                    className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-white/30 transition-colors hover:border-plasma/40 hover:text-plasma"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </Td>
+              </Tr>
+            ))
+          )}
+        </tbody>
+      </TableShell>
+
+      <Pagination page={page} limit={limit} total={total} onPage={setPage} />
+
+      <ConfirmDialog
+        open={!!confirm}
+        onCancel={() => setConfirm(null)}
+        onConfirm={revoke}
+        busy={busy}
+        title="Sessiyani tugatish"
+        body={
+          confirm
+            ? isAdmin
+              ? `@${confirm.username} ning ${describeDevice(confirm.ua)} qurilmasidagi sessiyasi tugatiladi. Agar bu sizning joriy sessiyangiz bo'lsa, paneldan chiqib ketasiz.`
+              : `${confirm.email} ning ${describeDevice(confirm.ua)} qurilmasidagi sessiyasi tugatiladi va u qaytadan kirishi kerak bo'ladi.`
+            : ""
+        }
+      />
+    </AdminShell>
   );
 }
+
+export default SessionsPage;

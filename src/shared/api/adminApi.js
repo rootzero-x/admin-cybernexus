@@ -7,7 +7,7 @@ const BASE = (
 
 const TIMEOUT_MS = 20000;
 
-async function req(path, { method = "GET", body, signal, skipAuth = false } = {}) {
+async function req(path, { method = "GET", body, signal, skipAuth = false, timeoutMs } = {}) {
   const headers = { Accept: "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
 
@@ -21,8 +21,11 @@ async function req(path, { method = "GET", body, signal, skipAuth = false } = {}
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  if (signal) signal.addEventListener("abort", () => controller.abort());
+  const timer = setTimeout(() => controller.abort(), timeoutMs || TIMEOUT_MS);
+  if (signal) {
+    if (signal.aborted) controller.abort();
+    else signal.addEventListener("abort", () => controller.abort(), { once: true });
+  }
 
   let res;
   try {
@@ -35,6 +38,11 @@ async function req(path, { method = "GET", body, signal, skipAuth = false } = {}
     });
   } catch (e) {
     clearTimeout(timer);
+
+    // A cancellation the caller asked for is not a failure — let it stay an
+    // AbortError so a superseded request can be ignored rather than shown.
+    if (e.name === "AbortError" && signal?.aborted) throw e;
+
     const err = new Error(
       e.name === "AbortError" ? "So'rov vaqti tugadi." : "Serverga ulanib bo'lmadi.",
     );
@@ -74,6 +82,8 @@ function buildQuery(params = {}) {
 }
 
 export const adminApi = {
+  /* ------------------------------ Auth ------------------------------ */
+
   step1Login: (username, password) =>
     req("/login_step1.php", {
       method: "POST",
@@ -91,7 +101,7 @@ export const adminApi = {
     return data;
   },
 
-  me: () => req("/me.php"),
+  me: (opts) => req("/me.php", opts),
 
   logout: async () => {
     try {
@@ -101,15 +111,66 @@ export const adminApi = {
     }
   },
 
-  // Users
-  usersList: (params) => req(`/users_list.php${buildQuery(params)}`),
-  userGet: (id) => req(`/users_get.php${buildQuery({ id })}`),
+  /* --------------------------- Dashboard ---------------------------- */
+
+  stats: (opts) => req("/stats.php", opts),
+
+  /* ----------------------------- Users ------------------------------ */
+
+  usersList: (params, opts) => req(`/users_list.php${buildQuery(params)}`, opts),
+  userGet: (id, opts) => req(`/users_get.php${buildQuery({ id })}`, opts),
   userCreate: (payload) => req("/users_create.php", { method: "POST", body: payload }),
   userUpdate: (payload) => req("/users_update.php", { method: "POST", body: payload }),
-  userDelete: (id) => req("/users_delete.php", { method: "POST", body: { id } }),
+  userDelete: (id, keepCertificates = true) =>
+    req("/users_delete.php", {
+      method: "POST",
+      body: { id, keep_certificates: keepCertificates },
+    }),
 
-  // Sessions
-  sessionsList: (params) => req(`/sessions_list.php${buildQuery(params)}`),
+  /* ---------------------------- Sessions ---------------------------- */
+
+  sessionsList: (params, opts) => req(`/sessions_list.php${buildQuery(params)}`, opts),
   sessionRevoke: (type, id) =>
     req("/sessions_revoke.php", { method: "POST", body: { type, id } }),
+
+  /* ---------------------------- Messages ---------------------------- */
+
+  messagesList: (params, opts) => req(`/messages_list.php${buildQuery(params)}`, opts),
+  messageUpdate: (payload) => req("/messages_update.php", { method: "POST", body: payload }),
+  messageDelete: (id) => req("/messages_delete.php", { method: "POST", body: { id } }),
+
+  /* -------------------------- Certificates -------------------------- */
+
+  certsList: (params, opts) => req(`/certs_list.php${buildQuery(params)}`, opts),
+  certCreate: (payload) => req("/certs_create.php", { method: "POST", body: payload }),
+  certUpdate: (payload) => req("/certs_update.php", { method: "POST", body: payload }),
+  certDelete: (id) => req("/certs_delete.php", { method: "POST", body: { id } }),
+
+  /* ------------------------------ News ------------------------------ */
+
+  newsList: (params, opts) => req(`/news_list.php${buildQuery(params)}`, opts),
+  newsSave: (payload) => req("/news_save.php", { method: "POST", body: payload }),
+  newsDelete: (idOrIds) =>
+    req("/news_delete.php", {
+      method: "POST",
+      body: Array.isArray(idOrIds) ? { ids: idOrIds } : { id: idOrIds },
+    }),
+  // Eleven feeds fetched back to back routinely outruns the default timeout.
+  newsRefresh: () => req("/news_refresh.php", { method: "POST", timeoutMs: 180000 }),
+
+  /* ----------------------------- Visits ----------------------------- */
+
+  visitsList: (params, opts) => req(`/visits_list.php${buildQuery(params)}`, opts),
+  visitDelete: (payload) => req("/visits_delete.php", { method: "POST", body: payload }),
+
+  /* ------------------------------ Audit ----------------------------- */
+
+  auditList: (params, opts) => req(`/audit_list.php${buildQuery(params)}`, opts),
+
+  /* ----------------------- Telegram bot (read-only) ----------------- */
+
+  botOverview: (opts) => req("/bot_overview.php", opts),
+  botUsers: (params, opts) => req(`/bot_users.php${buildQuery(params)}`, opts),
 };
+
+export default adminApi;
